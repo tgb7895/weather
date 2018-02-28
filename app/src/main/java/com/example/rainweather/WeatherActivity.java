@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,6 +45,8 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView drsgText;
     private TextView sportText;
     private ImageView bingPicImg;
+    public SwipeRefreshLayout swipeRefreshLayout;
+    private String mWeatherId;
 
     /**
      * 初始化控件
@@ -61,6 +64,8 @@ public class WeatherActivity extends AppCompatActivity {
         drsgText = findViewById(R.id.car_wash_text);
         sportText = findViewById(R.id.sport_text);
         bingPicImg = findViewById(R.id.bing_pic_img);
+
+        swipeRefreshLayout=findViewById(R.id.swipe_refresh);//下拉更新
     }
 
     @Override
@@ -77,6 +82,7 @@ public class WeatherActivity extends AppCompatActivity {
         }
         setContentView(R.layout.activity_weather);
         initControl();
+        swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather", null);
         String bingPic = prefs.getString("bing_pic", null);
@@ -91,15 +97,25 @@ public class WeatherActivity extends AppCompatActivity {
         if (weatherString != null) {
             //有缓存直接解析天气数据
             Weather weather = Utility.handleWeatherResponse(weatherString);
+
+            mWeatherId=weather.getHeWeather6().get(0).getBasic().getCid();
+
             showWeatherInfo(weather);
 
         } else {
-            //无缓存时去服务器查询天气
-            String weatherId = getIntent().getStringExtra("weather_id");
-            weatherLayout.setVisibility(View.INVISIBLE);
-            requestWeather(weatherId);
-        }
 
+            mWeatherId=getIntent().getStringExtra("weather_id");
+            //无缓存时去服务器查询天气
+//            String weatherId = getIntent().getStringExtra("weather_id");
+            weatherLayout.setVisibility(View.INVISIBLE);
+            requestWeather(mWeatherId);
+        }
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(mWeatherId);
+            }
+        });
 
     }
 
@@ -164,11 +180,13 @@ public class WeatherActivity extends AppCompatActivity {
                                     .edit();
                             editor.putString("weather", responseText);
                             editor.apply();
+                            mWeatherId=weather.getHeWeather6().get(0).getBasic().getCid();
                             showWeatherInfo(weather);
 
                         } else {
                             Toast.makeText(WeatherActivity.this, "获取天气失败啦2", Toast.LENGTH_SHORT).show();
                         }
+                        swipeRefreshLayout.setRefreshing(false);
                     }
                 });
             }
