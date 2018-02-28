@@ -16,12 +16,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.example.rainweather.gson.Forecast;
 import com.example.rainweather.gson.Weather;
 import com.example.rainweather.util.HttpUtil;
 import com.example.rainweather.util.Utility;
 
 import java.io.IOException;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -38,11 +38,11 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView degreeText;
     private TextView weatherInfoText;
     private LinearLayout forecastLayout;
-    private TextView aqiText;
-    private TextView pm25Text;
+    private TextView srText;
+    private TextView ssText;
     private TextView comfortText;
-    private TextView carWashText;
-    private TextView sporText;
+    private TextView drsgText;
+    private TextView sportText;
     private ImageView bingPicImg;
 
     /**
@@ -55,11 +55,11 @@ public class WeatherActivity extends AppCompatActivity {
         degreeText = findViewById(R.id.degree_text);
         weatherInfoText = findViewById(R.id.weather_info_text);
         forecastLayout = findViewById(R.id.forecast_layout);
-        aqiText = findViewById(R.id.aqi_text);
-        pm25Text = findViewById(R.id.pm25_text);
+        srText = findViewById(R.id.sr_text);
+        ssText = findViewById(R.id.ss_text);
         comfortText = findViewById(R.id.comfor_text);
-        carWashText = findViewById(R.id.car_wash_text);
-        sporText = findViewById(R.id.sport_text);
+        drsgText = findViewById(R.id.car_wash_text);
+        sportText = findViewById(R.id.sport_text);
         bingPicImg = findViewById(R.id.bing_pic_img);
     }
 
@@ -158,7 +158,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if (weather != null && "ok".equals(weather.status)) {
+                        if (weather != null && "ok".equals(weather.getHeWeather6().get(0).getStatus())) {
                             SharedPreferences.Editor editor = PreferenceManager
                                     .getDefaultSharedPreferences(WeatherActivity.this)
                                     .edit();
@@ -180,43 +180,70 @@ public class WeatherActivity extends AppCompatActivity {
      * 处理并展示Weather实体类中的数据
      */
     private void showWeatherInfo(Weather weather) {
-        String cityName = weather.basic.cityName;
-        String updateTime = weather.update.update.split(" ")[1];
-        String degree = weather.now.temperature + "℃";
-        String weatherInfo = weather.now.info;
+
+        Weather.HeWeather6Bean heWeather6Bean = weather.getHeWeather6().get(0);
+
+        Weather.HeWeather6Bean.BasicBean basic = heWeather6Bean.getBasic();
+        Weather.HeWeather6Bean.UpdateBean update = heWeather6Bean.getUpdate();
+        Weather.HeWeather6Bean.NowBean now = heWeather6Bean.getNow();
+        List<Weather.HeWeather6Bean.DailyForecastBean> daily_forecast = heWeather6Bean.getDaily_forecast();
+        List<Weather.HeWeather6Bean.LifestyleBean> lifestyle = heWeather6Bean.getLifestyle();
+
+        /**
+         * 当前天气情况
+         */
+        String cityName = basic.getLocation();
+        String updateTime=update.getLoc().split(" ")[1];
+        String degree=now.getTmp()+ "℃";  //当前温度
+        String weatherInfo=now.getCond_txt();  //多云
+
 
         titleCity.setText(cityName);
         titleUpdateTime.setText(updateTime);
         degreeText.setText(degree);
         weatherInfoText.setText(weatherInfo);
 
-        forecastLayout.removeAllViews();
+        forecastLayout.removeAllViews();  //调用此方法从ViewGroup删除所有子视图
 
-        for (Forecast forecast : weather.forecastList) {
+        /**
+         * 日出日落时间
+         */
+        String sr = daily_forecast.get(0).getSr();
+        String ss = daily_forecast.get(0).getSs();
+        srText.setText(sr);
+        ssText.setText(ss);
+
+
+        /**
+         * 预报
+         */
+        for (Weather.HeWeather6Bean.DailyForecastBean forecast:daily_forecast){
+
+
             View view = LayoutInflater.from(this).inflate(R.layout.forecast_item, forecastLayout, false);
+
             TextView dateText = (TextView) view.findViewById(R.id.date_text);
             TextView infoText = (TextView) view.findViewById(R.id.info_text);
             TextView maxText = (TextView) view.findViewById(R.id.max_text);
             TextView minText = (TextView) view.findViewById(R.id.min_text);
 
-            dateText.setText(forecast.date);
-            infoText.setText(forecast.info);
-            maxText.setText(forecast.tmp_max);
-            minText.setText(forecast.tmp_min);
+            dateText.setText(forecast.getDate());
+            infoText.setText(forecast.getCond_txt_d());
+            maxText.setText(forecast.getTmp_max());
+            minText.setText(forecast.getTmp_min());
+
             forecastLayout.addView(view);
 
-            aqiText.setText("63");
-            pm25Text.setText("23");
         }
 
-        String comfort = "舒适度:" + weather.lifeStyleList.get(0).info;
-        String carWash = "天气冷，建议着棉服、羽绒服、皮夹克加羊毛衫等冬季服装。年老体弱者宜着厚棉衣、冬大衣或厚羽绒服。";
-        String sport = "天气冷，建议着棉服、羽绒服、皮夹克加羊毛衫等冬季服装。年老体弱者宜着厚棉衣、冬大衣或厚羽绒服。";
-        comfortText.setText(comfort);
-        carWashText.setText(carWash);
-        sporText.setText(sport);
 
+        String comf = "舒适度:" + lifestyle.get(0).getTxt();
+        String drsg = "穿衣指数:" + lifestyle.get(1).getTxt();
+        String sport = "运动指数:" + lifestyle.get(3).getTxt();
+
+        comfortText.setText(comf);
+        drsgText.setText(drsg);
+        sportText.setText(sport);
         weatherLayout.setVisibility(View.VISIBLE);
-
     }
 }
